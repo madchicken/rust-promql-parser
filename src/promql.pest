@@ -64,7 +64,7 @@ at = _{ "@" }
 pair = _{ label ~ operator ~ string_literal }
 name_pair = _{ name_label ~ operator ~ string_literal}
 pair_list = { pair? ~ (comma ~ pair)* }
-label_list = { label ~ (comma ~ label)* }
+label_list = { lparen ~ label ~ (comma ~ label)* ~ rparen }
 scope = { lcurly ~ pair_list? ~ rcurly }
 name_vector = { lcurly ~ (pair ~ comma)? ~ name_pair ~ (comma ~ pair)* ~ rcurly }
 years = { ASCII_DIGIT+~"y" }
@@ -86,9 +86,6 @@ when = { time_ms | start | end }
 at_modifier = { at~when }
 
 modifiers = { offset_modifier~at_modifier? | at_modifier~offset_modifier? }
-
-instant_vector = { functions_to_instant | aggregated_vector | ((metric~scope?) | name_vector)~modifiers? }
-range_vector = { functions_to_range | instant_vector ~ range_selector ~ modifiers? }
 
 scalar = { integer | float }
 scalar_term = _{ scalar | functions_to_scalar }
@@ -168,6 +165,37 @@ tanh = { ^"tanh" }
 deg = { ^"deg" }
 sgn = { ^"sgn" }
 rad = { ^"rad" }
+histogram_quantile = { ^"histogram_quantile" }
+vector = { ^"vector" }
+clamp_max = { ^"clamp_max" }
+clamp_min = { ^"clamp_min" }
+changes = { ^"changes" }
+delta = { ^"delta" }
+deriv = { ^"deriv" }
+idelta = { ^"idelta" }
+increase = { ^"increase" }
+irate = { ^"irate" }
+rate = { ^"rate" }
+resets = { ^"resets" }
+avg_over_time = { ^"avg_over_time" }
+min_over_time = { ^"min_over_time" }
+max_over_time = { ^"max_over_time" }
+sum_over_time = { ^"sum_over_time" }
+count_over_time = { ^"count_over_time" }
+stddev_over_time = { ^"stddev_over_time" }
+stdvar_over_time = { ^"stdvar_over_time" }
+absent_over_time = { ^"absent_over_time" }
+last_over_time = { ^"last_over_time" }
+present_over_time = { ^"present_over_time"}
+predict_linear = {^"predict_linear"}
+holt_winters = {^"holt_winters"}
+label_join = {^"label_join"}
+label_replace = {^"label_replace"}
+time = { ^"time" }
+pi = { ^"pi" }
+quantile_over_time = { ^"quantile_over_time" }
+round = { ^"round" }
+clamp = { ^"clamp" }
 
 function_absent = { absent ~ lparen ~ instant_vector ~ rparen }
 function_abs = { abs ~ lparen ~ instant_vector ~ rparen }
@@ -205,38 +233,10 @@ function_tanh = { tanh ~ lparen ~ instant_vector ~ rparen }
 function_deg = { deg ~ lparen ~ instant_vector ~ rparen }
 function_sgn = { sgn ~ lparen ~ instant_vector ~ rparen }
 function_rad = { rad ~ lparen ~ instant_vector ~ rparen }
-
-histogram_quantile = {
- ^"histogram_quantile"
-}
 function_histogram_quantile =  { histogram_quantile ~ lparen ~ scalar_expr ~ comma ~ instant_vector ~ rparen }
-
-vector = { ^"vector" }
 function_vector = { vector ~ lparen ~ (scalar_expr) ~ rparen }
-
-clamp_max = { ^"clamp_max" }
-clamp_min = { ^"clamp_min" }
 function_clamp_max = { clamp_max ~ lparen ~ instant_vector ~ comma ~ scalar_expr ~ rparen }
 function_clamp_min = { clamp_min ~ lparen ~ instant_vector ~ comma ~ scalar_expr ~ rparen }
-
-changes = { ^"changes" }
-delta = { ^"delta" }
-deriv = { ^"deriv" }
-idelta = { ^"idelta" }
-increase = { ^"increase" }
-irate = { ^"irate" }
-rate = { ^"rate" }
-resets = { ^"resets" }
-avg_over_time = { ^"avg_over_time" }
-min_over_time = { ^"min_over_time" }
-max_over_time = { ^"max_over_time" }
-sum_over_time = { ^"sum_over_time" }
-count_over_time = { ^"count_over_time" }
-stddev_over_time = { ^"stddev_over_time" }
-stdvar_over_time = { ^"stdvar_over_time" }
-absent_over_time = { ^"absent_over_time" }
-last_over_time = { ^"last_over_time" }
-present_over_time = { ^"present_over_time"}
 function_changes = { changes ~ lparen ~ range_vector ~ rparen }
 function_delta = { delta ~ lparen ~ range_vector ~ rparen }
 function_deriv = { deriv ~ lparen ~ range_vector ~ rparen }
@@ -255,52 +255,109 @@ function_stdvar_over_time = { stdvar_over_time ~ lparen ~ range_vector ~ rparen 
 function_absent_over_time = { absent_over_time ~ lparen ~ range_vector ~ rparen }
 function_last_over_time = { last_over_time ~ lparen ~ range_vector ~ rparen }
 function_present_over_time = { present_over_time ~ lparen ~ range_vector ~ rparen }
-
-predict_linear = {^"predict_linear"}
-functions_range_vector_scalar = { predict_linear ~ lparen ~ range_vector ~ comma ~ scalar_expr ~ rparen }
-
-holt_winters = {^"holt_winters"}
-functions_range_vector_scalar_scalar = { holt_winters ~ lparen ~ range_vector ~ comma ~ scalar_expr ~ comma ~ scalar_expr ~ rparen }
-
-label_join = {^"label_join"}
-functions_instant_vector_variable_params = { label_join ~ lparen ~ instant_vector ~ comma ~ label ~ comma ~ string_literal ~ comma ~ label ~ (comma ~ label)* ~ rparen }
-
-label_replace = {^"label_replace"}
-functions_instant_vector_string_string_string_string = { label_replace ~ lparen ~ instant_vector ~ comma ~ label ~ comma ~ string_literal ~ comma ~ label ~ comma ~ regex_value ~ rparen }
-
-time = { ^"time" }
-pi = { ^"pi" }
+functions_predict_linear = { predict_linear ~ lparen ~ range_vector ~ comma ~ scalar_expr ~ rparen }
+functions_holt_winters = { holt_winters ~ lparen ~ range_vector ~ comma ~ scalar_expr ~ comma ~ scalar_expr ~ rparen }
+functions_label_join = { label_join ~ lparen ~ instant_vector ~ comma ~ string_literal ~ comma ~ string_literal ~ comma ~ string_literal ~ (comma ~ string_literal)* ~ rparen }
+functions_label_replace = { label_replace ~ lparen ~ instant_vector ~ comma ~ string_literal ~ comma ~ string_literal ~ comma ~ string_literal ~ comma ~ regex_value ~ rparen }
 function_time = { time ~ lparen ~ rparen }
 function_pi = { pi ~ lparen ~ rparen }
-
-quantile_over_time = { ^"quantile_over_time" }
 function_quantile_over_time = { quantile_over_time ~ lparen ~ scalar_expr ~ comma ~ range_vector ~ rparen }
-
-round = { ^"round" }
 function_round = { round ~ lparen ~ instant_vector ~ (comma ~ scalar_expr)? ~ rparen }
-
-clamp = { ^"clamp" }
 function_clamp = { clamp ~ lparen ~ instant_vector ~ comma ~ scalar_expr ~ comma ~ scalar_expr ~ rparen }
 
+function = {
+    function_absent |
+    function_abs |
+    function_ceil |
+    function_day_of_month |
+    function_day_of_week |
+    function_day_of_year |
+    function_days_in_month |
+    function_exp |
+    function_floor |
+    function_hour |
+    function_scalar |
+    function_ln |
+    function_log2 |
+    function_log10 |
+    function_minute |
+    function_month |
+    function_sort_desc |
+    function_sort |
+    function_sqrt |
+    function_timestamp |
+    function_year |
+    function_acos |
+    function_acosh |
+    function_asin |
+    function_asinh |
+    function_atan |
+    function_atanh |
+    function_cos |
+    function_cosh |
+    function_sin |
+    function_sinh |
+    function_tan |
+    function_tanh |
+    function_deg |
+    function_sgn |
+    function_rad |
+    function_histogram_quantile |
+    function_vector |
+    function_clamp_max |
+    function_clamp_min |
+    function_changes |
+    function_delta |
+    function_deriv |
+    function_idelta |
+    function_increase |
+    function_irate |
+    function_rate |
+    function_resets |
+    function_avg_over_time |
+    function_min_over_time |
+    function_max_over_time |
+    function_sum_over_time |
+    function_count_over_time |
+    function_stddev_over_time |
+    function_stdvar_over_time |
+    function_absent_over_time |
+    function_last_over_time |
+    function_present_over_time |
+    functions_predict_linear |
+    functions_holt_winters |
+    functions_label_join |
+    functions_label_replace |
+    function_time |
+    function_pi |
+    function_quantile_over_time |
+    function_round |
+    function_clamp
+}
+
 functions_to_instant = {
- function_changes |
- function_delta |
- function_deriv |
- function_idelta |
- function_increase |
- function_irate |
- function_rate |
- function_resets |
- function_avg_over_time |
- function_min_over_time |
- function_max_over_time |
- function_sum_over_time |
- function_count_over_time |
- function_stddev_over_time |
- function_stdvar_over_time |
- function_absent_over_time |
- function_last_over_time |
- function_present_over_time
+    function_changes |
+    function_delta |
+    function_deriv |
+    function_idelta |
+    function_increase |
+    function_irate |
+    function_rate |
+    function_resets |
+    function_avg_over_time |
+    function_min_over_time |
+    function_max_over_time |
+    function_sum_over_time |
+    function_count_over_time |
+    function_stddev_over_time |
+    function_stdvar_over_time |
+    function_absent_over_time |
+    function_last_over_time |
+    function_present_over_time |
+    functions_predict_linear |
+    functions_holt_winters |
+    functions_label_join |
+    functions_label_replace
 }
 
 functions_to_range = {
@@ -323,26 +380,27 @@ functions_to_scalar = {
 
 bin_op = { arithmetic_op | comparison_op | logical_op }
 
-vector_matching = { (on | ignoring) ~ (lparen~label_list~rparen)? }
-group_modifiers = { (group_left | group_right) ~ (lparen~label_list~rparen)? }
-many_to_one = { atom ~ arithmetic_op ~ vector_matching ~ group_modifiers ~ atom }
-one_to_one = { atom ~ arithmetic_op ~ vector_matching ~ atom }
+vector_matching = { (on | ignoring) ~ label_list? }
+group_modifiers = { (group_left | group_right) ~ label_list? }
+
+instant_vector = { functions_to_instant | aggregated_vector | ((metric~scope?) | name_vector)~modifiers? }
+range_vector = { functions_to_range | instant_vector ~ range_selector ~ modifiers? }
 
 vector_expr = { range_vector | instant_vector }
 parameter_list = { (scalar_expr ~ comma)* }
 
-grouping_label_list = { grouping_keywords ~ (lparen ~ label_list ~ rparen) }
+grouping_label_list = { grouping_keywords ~ label_list }
 
 aggregated_vector = {
-    aggregations ~ grouping_label_list ~ lparen ~ parameter_list? ~ instant_vector ~ rparen |
-    aggregations ~ lparen ~ parameter_list? ~ instant_vector ~ rparen ~ grouping_label_list?
+    aggregations ~ grouping_label_list ~ lparen ~ parameter_list? ~ expr ~ rparen |
+    aggregations ~ lparen ~ parameter_list? ~ expr ~ rparen ~ grouping_label_list?
 }
 
 unary_sign = { "-" | "+" }
 term = _{ scalar_expr | instant_vector }
 primary = _{ term | lparen ~ expr ~ rparen }
 atom = _{ unary_sign? ~ primary }
-expr = { many_to_one | one_to_one | atom ~ (bin_op ~ atom)* }
+expr = { atom ~ (bin_op ~ vector_matching? ~ group_modifiers? ~ atom)* }
 query = { SOI ~ expr ~ EOI }
 
 COMMENT = _{ begin_comment ~ (!NEWLINE~ANY)* ~ NEWLINE? }
