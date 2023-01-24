@@ -43,9 +43,9 @@ bq_char = {
 dq_inner = @{ dq_char* }
 sq_inner = @{ sq_char* }
 bq_inner = @{ bq_char* }
-double_quoted_string = _{ "\"" ~ dq_inner ~ "\"" }
-single_quoted_string = _{ "'" ~ sq_inner ~ "'" }
-back_quoted_string = _{ "`" ~ bq_inner ~ "`" }
+double_quoted_string = _{ double_quote ~ dq_inner ~ double_quote }
+single_quoted_string = _{ single_quote ~ sq_inner ~ single_quote }
+back_quoted_string = _{ back_quote ~ bq_inner ~ back_quote }
 string_literal = ${ double_quoted_string | single_quoted_string | back_quoted_string }
 regex_value = { string_literal }
 
@@ -79,7 +79,7 @@ end = _{ "end()" }
 time_ms = { ASCII_DIGIT+ }
 
 time_duration = _{ years?~weeks?~days?~hours?~minutes?~seconds? }
-range_selector = { "["~time_duration~"]" }
+range_selector = { lsquare ~ time_duration ~ rsquare }
 
 offset_modifier = { offset~time_duration }
 when = { time_ms | start | end }
@@ -114,7 +114,7 @@ and = _{ "and" }
 or = _{ "or" }
 unless = _{ "unless" }
 
-aggregations = {
+aggregation = {
  ^"sum" |
  ^"min" |
  ^"max" |
@@ -275,17 +275,17 @@ function = {
     function_days_in_month |
     function_exp |
     function_floor |
-    function_hour |
+    function_sort_desc |
+    function_sort |
     function_scalar |
     function_ln |
     function_log2 |
     function_log10 |
-    function_minute |
-    function_month |
-    function_sort_desc |
-    function_sort |
     function_sqrt |
     function_timestamp |
+    function_minute |
+    function_hour |
+    function_month |
     function_year |
     function_acos |
     function_acosh |
@@ -336,6 +336,46 @@ function = {
 }
 
 functions_to_instant = {
+    function_absent |
+    function_abs |
+    function_ceil |
+    function_day_of_month |
+    function_day_of_week |
+    function_day_of_year |
+    function_days_in_month |
+    function_exp |
+    function_floor |
+    function_sort_desc |
+    function_sort |
+    function_scalar |
+    function_ln |
+    function_log2 |
+    function_log10 |
+    function_sqrt |
+    function_timestamp |
+    function_minute |
+    function_hour |
+    function_month |
+    function_year |
+    function_acos |
+    function_acosh |
+    function_asin |
+    function_asinh |
+    function_atan |
+    function_atanh |
+    function_cos |
+    function_cosh |
+    function_sin |
+    function_sinh |
+    function_tan |
+    function_tanh |
+    function_deg |
+    function_sgn |
+    function_rad |
+    function_histogram_quantile |
+    function_vector |
+    function_clamp_max |
+    function_clamp_min |
     function_changes |
     function_delta |
     function_deriv |
@@ -357,25 +397,24 @@ functions_to_instant = {
     functions_predict_linear |
     functions_holt_winters |
     functions_label_join |
-    functions_label_replace
-}
-
-functions_to_range = {
- function_quantile_over_time
+    functions_label_replace |
+    function_quantile_over_time |
+    function_round |
+    function_clamp
 }
 
 functions_to_scalar = {
- function_time |
- function_hour |
- function_minute |
- function_month |
- function_year |
- function_day_of_month |
- function_day_of_week |
- function_day_of_year |
- function_days_in_month |
- function_pi |
- function_scalar
+    function_time |
+    function_hour |
+    function_minute |
+    function_month |
+    function_year |
+    function_day_of_month |
+    function_day_of_week |
+    function_day_of_year |
+    function_days_in_month |
+    function_pi |
+    function_scalar
 }
 
 bin_op = { arithmetic_op | comparison_op | logical_op }
@@ -384,7 +423,7 @@ vector_matching = { (on | ignoring) ~ label_list? }
 group_modifiers = { (group_left | group_right) ~ label_list? }
 
 instant_vector = { functions_to_instant | aggregated_vector | ((metric~scope?) | name_vector)~modifiers? }
-range_vector = { functions_to_range | instant_vector ~ range_selector ~ modifiers? }
+range_vector = { instant_vector ~ range_selector ~ modifiers? }
 
 vector_expr = { range_vector | instant_vector }
 parameter_list = { (scalar_expr ~ comma)* }
@@ -392,15 +431,15 @@ parameter_list = { (scalar_expr ~ comma)* }
 grouping_label_list = { grouping_keywords ~ label_list }
 
 aggregated_vector = {
-    aggregations ~ grouping_label_list ~ lparen ~ parameter_list? ~ expr ~ rparen |
-    aggregations ~ lparen ~ parameter_list? ~ expr ~ rparen ~ grouping_label_list?
+    aggregation ~ grouping_label_list ~ lparen ~ parameter_list? ~ expr ~ rparen |
+    aggregation ~ lparen ~ parameter_list? ~ expr ~ rparen ~ grouping_label_list?
 }
 
 unary_sign = { "-" | "+" }
 term = _{ scalar_expr | instant_vector }
 primary = _{ term | lparen ~ expr ~ rparen }
 atom = _{ unary_sign? ~ primary }
-expr = { atom ~ (bin_op ~ vector_matching? ~ group_modifiers? ~ atom)* }
+expr = { atom ~ (bin_op ~ vector_matching? ~ group_modifiers? ~ bool? ~ atom)* }
 query = { SOI ~ expr ~ EOI }
 
 COMMENT = _{ begin_comment ~ (!NEWLINE~ANY)* ~ NEWLINE? }
