@@ -1,4 +1,16 @@
+// This file is part of PromQL Rust Parser.
+// PromQL Rust Parser is free software: you can redistribute it and/or modify it under the terms of the
+// GNU General Public License as published by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+// PromQL Rust Parser is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+// the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+// for more details.
+// You should have received a copy of the GNU General Public License along with PromQL Rust Parser.
+// If not, see <https://www.gnu.org/licenses/>.
+
 mod ast;
+mod tokenizer;
+
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
@@ -7,86 +19,14 @@ extern crate core;
 use clap::{arg_enum, Parser as Clap_Parser};
 use clap::ValueEnum;
 
-use pest::Parser;
-use pest::iterators::Pair;
+use pest::{Parser, state};
+use pest::iterators::{Pair, Pairs};
 use serde::{Serialize, Deserialize};
 use colored::*;
+use pest::error::Error;
 use serde_json;
+use crate::tokenizer::*;
 
-#[derive(Parser)]
-#[grammar = "promql.pest"]
-struct PromQLParser;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-enum SyntaxTokenType {
-    Metric,
-    Label,
-    Value,
-    Bracket,
-    Scalar,
-    Keyword,
-    Function,
-    Text
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct SyntaxTokenPosition {
-    offset: usize,
-    line: usize,
-    col: usize
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct SyntaxToken {
-    start: SyntaxTokenPosition,
-    end: SyntaxTokenPosition,
-    token_type: SyntaxTokenType,
-    content: String
-}
-
-fn token_from_rule(rule: Rule) -> SyntaxTokenType {
-    match rule {
-        Rule::metric => SyntaxTokenType::Metric,
-        Rule::label => SyntaxTokenType::Label,
-        Rule::scalar => SyntaxTokenType::Scalar,
-        Rule::sq_inner => SyntaxTokenType::Value,
-        Rule::dq_inner => SyntaxTokenType::Value,
-        Rule::bq_inner => SyntaxTokenType::Value,
-        Rule::string_literal => SyntaxTokenType::Value,
-        Rule::function => SyntaxTokenType::Function,
-        Rule::aggregation => SyntaxTokenType::Function,
-        Rule::lparen => SyntaxTokenType::Bracket,
-        Rule::rparen => SyntaxTokenType::Bracket,
-        Rule::lsquare => SyntaxTokenType::Bracket,
-        Rule::rsquare => SyntaxTokenType::Bracket,
-        Rule::lcurly => SyntaxTokenType::Bracket,
-        Rule::rcurly => SyntaxTokenType::Bracket,
-        _ => SyntaxTokenType::Text
-    }
-}
-
-fn to_token_pos(pos: pest::Position) -> SyntaxTokenPosition {
-    let ( line, col) = pos.line_col();
-    let offset = pos.pos();
-    SyntaxTokenPosition {
-        offset, line, col
-    }
-}
-
-fn get_tokens(pair: Pair<Rule>) -> Vec<SyntaxToken> {
-    let children: Vec<_> = pair.clone().into_inner().collect();
-    let len = children.len();
-    if len > 0 {
-        return children.into_iter().map(|child | get_tokens(child)).flatten().collect();
-    }
-
-    vec![SyntaxToken {
-        start: to_token_pos(pair.as_span().start_pos()),
-        end: to_token_pos(pair.as_span().end_pos()),
-        token_type: token_from_rule(pair.as_rule()),
-        content: String::from(pair.as_span().as_str())
-    }]
-}
 
 fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> String {
     let indent = if is_newline {
@@ -116,19 +56,19 @@ fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> Strin
 
 fn format_token(token: SyntaxToken) -> String {
     match token.token_type {
-        SyntaxTokenType::Label=> token.content.cyan().to_string(),
+        SyntaxTokenType::Label => token.content.cyan().to_string(),
         SyntaxTokenType::Metric => token.content.italic().red().to_string(),
-        SyntaxTokenType::Value=> token.content.green().to_string(),
-        SyntaxTokenType::Bracket=> token.content.blue().to_string(),
-        SyntaxTokenType::Scalar=> token.content.yellow().to_string(),
-        SyntaxTokenType::Keyword=> format!("{} ", token.content.red()),
-        SyntaxTokenType::Function=> format!("{} ", token.content.purple()),
-        SyntaxTokenType::Text=> token.content.blue().to_string(),
+        SyntaxTokenType::Value => token.content.green().to_string(),
+        SyntaxTokenType::Bracket => token.content.blue().to_string(),
+        SyntaxTokenType::Scalar => token.content.yellow().to_string(),
+        SyntaxTokenType::Keyword => format!("{} ", token.content.red()),
+        SyntaxTokenType::Function => format!("{} ", token.content.purple()),
+        SyntaxTokenType::Text => token.content.blue().to_string(),
     }
 }
 
 fn parse_promql(query: &str, output: Option<Output>) {
-    let prom_ql = PromQLParser::parse(Rule::query, query);
+    let prom_ql: Result<Pairs<Rule>, Error<Rule>> = PromQLParser::parse(Rule::query, query);
     match prom_ql {
         Ok(pairs) => {
             let pc = pairs.clone();
@@ -146,10 +86,16 @@ fn parse_promql(query: &str, output: Option<Output>) {
                     let lines: Vec<String> = pc.map(|pair| format_pair(pair, 0, true)).collect();
                     println!("{}", lines.join("\n"));
                 },
+                Output::Ast => {
+                    panic!("Not yet implemented!");
+                }
             }
 
         }
-        Err(error) => println!("{}", error.renamed_rules(|r| format!("{:?}", r)))
+        Err(error) => {
+            println!("{:?}", error);
+            println!("{}", error.renamed_rules(|r| format!("{:?}", r)))
+        }
     }
 }
 
@@ -157,7 +103,8 @@ arg_enum! {
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
     enum Output {
         Json,
-        Tree
+        Tree,
+        Ast
     }
 }
 
