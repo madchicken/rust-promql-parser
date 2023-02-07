@@ -8,7 +8,6 @@
 // You should have received a copy of the GNU General Public License along with PromQL Rust Parser.
 // If not, see <https://www.gnu.org/licenses/>.
 
-use std::iter::Map;
 use strum_macros::EnumString;
 
 #[derive(EnumString)]
@@ -32,15 +31,15 @@ enum Unit {
 
 #[derive(EnumString)]
 #[derive(Debug)]
-enum Op {
+pub enum Op {
     #[strum(serialize="+")]
-    Plus,
+    Add,
     #[strum(serialize="-")]
-    Minus,
+    Subtract,
     #[strum(serialize="*")]
     Multiply,
     #[strum(serialize="/")]
-    Division,
+    Divide,
     #[strum(serialize="^")]
     Pow,
     #[strum(serialize="%")]
@@ -65,38 +64,51 @@ enum Op {
     Unless
 }
 
-#[derive(Debug)]
-struct Scope {
-    labels: Map<String, String>
+#[derive(Debug, Clone)]
+pub struct LabelAndValue {
+    pub name: String,
+    pub op: String,
+    pub value: String
 }
 
 #[derive(Debug)]
-struct Param {
-    val_int: Option<u32>,
-    val_float: Option<f32>,
-    val_string: Option<String>
+pub struct Scope {
+    pub labels: Vec<LabelAndValue>
 }
 
 #[derive(Debug)]
-struct InstantVector {
-    function: Option<Box<Function>>,
-    metric: String,
-    scope: Option<Box<Scope>>,
+pub struct Param {
+    pub val_float: Option<f32>,
+    pub val_string: Option<String>
 }
 
 #[derive(Debug)]
-struct RangeVector {
+pub struct Metric {
+    pub metric: String,
+    pub scope: Option<Scope>
+}
+
+#[derive(Debug)]
+pub enum InstantVector {
+    Scalar(f32),
+    Func(Box<Function>),
+    MetricWithScope(Metric),
+    NameScope(Scope)
+}
+
+#[derive(Debug)]
+pub struct RangeVector {
     instant_vector: InstantVector,
     range: u64,
     range_unit: Unit
 }
 
 #[derive(Debug)]
-struct Function {
-    name: String,
-    params: Option<Vec<Param>>,
-    instant_vector: Option<InstantVector>,
-    range_vector: Option<RangeVector>
+pub struct Function {
+    pub name: String,
+    pub params: Option<Vec<Param>>,
+    pub instant_vector: Option<InstantVector>,
+    pub range_vector: Option<RangeVector>
 }
 
 #[derive(Debug)]
@@ -117,13 +129,13 @@ struct VectorMatching {
 
 #[derive(Debug)]
 pub enum Expr {
-    Sign(Option<Sign>),
-    Scalar(Option<f32>),
-    InstantVector(Option<InstantVector>),
+    Sign(Box<Expr>),
+    InstantVector(InstantVector),
+    Bool(Box<Expr>),
     BinOp {
         lhs: Box<Expr>,
-        op: Option<Op>,
-        rhs: Option<Box<Expr>>,
+        op: Op,
+        rhs: Box<Expr>,
     }
 }
 

@@ -20,6 +20,7 @@ lcurly = { "{" }
 rcurly = { "}" }
 lsquare = { "[" }
 rsquare = { "]" }
+colon = { ":" }
 integer = @{ ASCII_DIGIT+ }
 exponential = { (^"e") ~ ("+"|"-")? ~ ASCII_DIGIT+ }
 float = @{ ASCII_DIGIT* ~ "."? ~ ASCII_DIGIT+ ~ exponential? }
@@ -71,12 +72,12 @@ bool = { ^"bool" }
 operator = @{ "!=" | "=~" | "!~" | "=" }
 at = _{ "@" }
 
-pair = _{ label ~ operator ~ string_literal }
-name_pair = _{ name_label ~ operator ~ string_literal}
-pair_list = { pair? ~ (comma ~ pair)* }
+pair = { label ~ operator ~ string_literal }
+name_pair = { name_label ~ operator ~ string_literal}
+pair_list = _{ pair? ~ (comma ~ pair)* }
 label_list = { lparen ~ label ~ (comma ~ label)* ~ rparen }
 scope = { lcurly ~ pair_list? ~ rcurly }
-name_vector = { lcurly ~ (pair ~ comma)? ~ name_pair ~ (comma ~ pair)* ~ rcurly }
+name_vector = { lcurly ~ (pair ~ comma)? ~ name_pair ~ (comma ~ pair)* ~ rcurly ~ modifiers?}
 years = { ASCII_DIGIT+~"y" }
 weeks = { ASCII_DIGIT+~"w" }
 days = { ASCII_DIGIT+~"d" }
@@ -90,6 +91,7 @@ time_ms = { ASCII_DIGIT+ }
 
 time_duration = _{ years?~weeks?~days?~hours?~minutes?~seconds? }
 range_selector = { lsquare ~ time_duration ~ rsquare }
+sub_query_selector = { lsquare ~ time_duration ~ colon ~ time_duration? ~ rsquare }
 
 offset_modifier = { offset~time_duration }
 when = { time_ms | start | end }
@@ -103,26 +105,26 @@ scalar_primary = _{ scalar_term | lparen ~ scalar_expr ~ rparen }
 scalar_atom = _{ unary_sign? ~ scalar_primary }
 scalar_expr = { scalar_atom ~ (bin_op ~ scalar_atom)* }
 
-arithmetic_op = { add | subtract | multiply | divide | modulo | power }
-add = _{ "+" }
-subtract = _{ "-" }
-multiply = _{ "*" }
-divide = _{ "/" }
-modulo = _{ "%" }
-power = _{ "^" }
+arithmetic_op = _{ add | subtract | multiply | divide | modulo | power }
+add = { "+" }
+subtract = { "-" }
+multiply = { "*" }
+divide = { "/" }
+modulo = { "%" }
+power = { "^" }
 
-comparison_op = { gte | lte | gt | lt | eq | ne }
-gte = _{ ">=" }
-lte = _{ "<=" }
-gt = _{ ">" }
-lt = _{ "<" }
-eq = _{ "==" }
-ne = _{ "!=" }
+comparison_op = _{ gte | lte | gt | lt | eq | ne }
+gte = { ">=" }
+lte = { "<=" }
+gt = { ">" }
+lt = { "<" }
+eq = { "==" }
+ne = { "!=" }
 
-logical_op = { and | or | unless }
-and = _{ "and" }
-or = _{ "or" }
-unless = _{ "unless" }
+logical_op = _{ and | or | unless }
+and = { "and" }
+or = { "or" }
+unless = { "unless" }
 
 aggregation = {
  ^"sum" |
@@ -427,13 +429,14 @@ functions_to_scalar = {
     function_scalar
 }
 
-bin_op = { arithmetic_op | comparison_op | logical_op }
+bin_op = _{ arithmetic_op | comparison_op | logical_op }
 
 vector_matching = { (on | ignoring) ~ label_list? }
 group_modifiers = { (group_left | group_right) ~ label_list? }
 
-instant_vector = { functions_to_instant | aggregated_vector | ((metric~scope?) | name_vector)~modifiers? }
-range_vector = { instant_vector ~ range_selector ~ modifiers? }
+metric_with_scope = { metric~scope?~modifiers? }
+instant_vector = { functions_to_instant | aggregated_vector | (metric_with_scope | name_vector) }
+range_vector = { instant_vector ~ range_selector ~ modifiers? ~ sub_query_selector? }
 
 vector_expr = { range_vector | instant_vector }
 parameter_list = { (scalar_expr ~ comma)* }
@@ -449,7 +452,8 @@ unary_sign = { "-" | "+" }
 term = _{ scalar_expr | instant_vector }
 primary = _{ term | lparen ~ expr ~ rparen }
 atom = _{ unary_sign? ~ primary }
-expr = { atom ~ (bin_op ~ vector_matching? ~ group_modifiers? ~ bool? ~ atom)* }
+postfix = { vector_matching? ~ group_modifiers? ~ bool? }
+expr = { atom ~ (bin_op ~ postfix ~ atom)* }
 query = { SOI ~ expr ~ EOI }
 
 COMMENT = _{ begin_comment ~ (!NEWLINE~ANY)* ~ NEWLINE? }

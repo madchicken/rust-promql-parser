@@ -8,8 +8,9 @@
 // You should have received a copy of the GNU General Public License along with PromQL Rust Parser.
 // If not, see <https://www.gnu.org/licenses/>.
 
-use pest::Parser;
-use pest::iterators::Pair;
+use pest::error::Error;
+use pest::{Parser, state};
+use pest::iterators::{Pair, Pairs};
 use serde::{Serialize, Deserialize};
 
 #[derive(Parser)]
@@ -86,3 +87,13 @@ pub fn get_tokens(pair: Pair<Rule>) -> Vec<SyntaxToken> {
         content: String::from(pair.as_span().as_str())
     }]
 }
+
+// pub fn safe_parse_promql(query: &str) -> Result<Pairs<Rule>, Error<Rule>> {
+//     // let mut state: Box<pest::ParserState<'_, Rule>> = pest::ParserState::new(query);
+//     // let x = Rule.iter().map(|rule| {
+//     //     state.rule(rule, |s| Ok(s))
+//     // });
+//     // x
+//
+//     PromQLParser::new()
+// }
